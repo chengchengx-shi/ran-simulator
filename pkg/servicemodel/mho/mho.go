@@ -6,6 +6,7 @@ package mho
 
 import (
 	"context"
+	"time"
 
 	e2smtypes "github.com/onosproject/onos-api/go/onos/e2t/e2sm"
 	e2smmhosm "github.com/onosproject/onos-e2-sm/servicemodels/e2sm_mho_go/servicemodel"
@@ -400,5 +401,32 @@ func (m *Mho) RICControl(ctx context.Context, request *e2appducontents.Riccontro
 		log.Error(err)
 		return nil, nil, err
 	}
-	return response, nil, nil
+
+	randomValue := time.Now().Unix() % 10
+	if randomValue < 5 {
+		return response, nil, nil
+	}
+
+	var causeRicrequest e2apies.CauseRicrequest
+	switch randomValue {
+	case 6, 7:
+		causeRicrequest = e2apies.CauseRicrequest_CAUSE_RICREQUEST_CONTROL_FAILED_TO_EXECUTE
+	case 8, 9:
+		causeRicrequest = e2apies.CauseRicrequest_CAUSE_RICREQUEST_CONTROL_TIMER_EXPIRED
+	default:
+		causeRicrequest = e2apies.CauseRicrequest_CAUSE_RICREQUEST_CONTROL_MESSAGE_INVALID
+	}
+
+	cause := &e2apies.Cause{Cause: &e2apies.Cause_RicRequest{RicRequest: causeRicrequest}}
+	failure, err = controlutils.NewControl(
+		controlutils.WithRanFuncID(*ranFuncID),
+		controlutils.WithRequestID(*reqID),
+		controlutils.WithRicInstanceID(*ricInstanceID),
+		controlutils.WithCause(cause),
+	).BuildControlFailure()
+	if err != nil {
+		log.Error(err)
+		return nil, nil, err
+	}
+	return nil, failure, nil
 }
